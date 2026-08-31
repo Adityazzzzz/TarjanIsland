@@ -1,4 +1,4 @@
-import { ArchipelagoGraph,GraphNode,GraphEdge } from "./types";
+import {ArchipelagoGraph} from "./types";
 
 const ID_REGEX = /^[A-Z][A-Z0-9_-]{0,15}$/;
 
@@ -68,11 +68,10 @@ export function validateGraph(graph:ArchipelagoGraph):void{
 export function buildAdjacencyList(graph: ArchipelagoGraph): Map<string,string[]>{
     const adj = new Map<string,string[]>();
 
-    // Initialize empty arrays for all nodes
+    // Empty array
     for(const node of graph.nodes){
         adj.set(node.id,[]);
     }
-    // Populate undirected edges
     for(const edge of graph.edges){
         adj.get(edge.source)!.push(edge.target);
         adj.get(edge.target)!.push(edge.source);
