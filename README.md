@@ -15,50 +15,50 @@ An interactive, web-based visualizer for identifying critical bridges and articu
 
 ## 1. Implementation Plan
 
-*   **Graph Validation and Adjacency Construction:** We will define a strict TypeScript schema for the nodes (6–9 islands) and undirected edges (6–13 bridges)[cite: 1]. The initial calculation engine will validate finite x and y coordinates, ensure unique IDs, reject self-loops, and build deterministic adjacency lists sorted in ascending ASCII order[cite: 1].
-*   **Low-Link DFS Traversal and Event Logging:** We will implement Tarjan's algorithm using a zero-based discovery clock to identify critical bridges and articulation points[cite: 1]. Instead of just returning the final arrays, this DFS function will push structured event objects (e.g., node discovered, edge inspected, low value updated) to an array, capturing every numerical change for the visualizer[cite: 1].
-*   **Replay Engine and State Management:** We will build a custom React hook to manage the event array, exposing the required Load My Archipelago, Step, Run to End, and Reset controls[cite: 1]. This controller will keep the active event, the map highlights, and the numeric node table perfectly synchronized during playback[cite: 1].
-*   **Visualization and Node Table UI:** We will construct a frontend workspace featuring an SVG-based island map that distinguishes unvisited, current, and classified states[cite: 1]. Alongside the map, we will render a compact node table displaying IDs, parents, discovery/low values, component counts, and sorted critical-item summaries[cite: 1].
+*   **Graph Validation and Adjacency Construction:** We will define a strict TypeScript schema for the nodes (6–9 islands) and undirected edges (6–13 bridges). The initial calculation engine will validate finite x and y coordinates, ensure unique IDs, reject self-loops, and build deterministic adjacency lists sorted in ascending ASCII order.
+*   **Low-Link DFS Traversal and Event Logging:** We will implement Tarjan's algorithm using a zero-based discovery clock to identify critical bridges and articulation points. Instead of just returning the final arrays, this DFS function will push structured event objects (e.g., node discovered, edge inspected, low value updated) to an array, capturing every numerical change for the visualizer.
+*   **Replay Engine and State Management:** We will build a custom React hook to manage the event array, exposing the required Load My Archipelago, Step, Run to End, and Reset controls. This controller will keep the active event, the map highlights, and the numeric node table perfectly synchronized during playback.
+*   **Visualization and Node Table UI:** We will construct a frontend workspace featuring an SVG-based island map that distinguishes unvisited, current, and classified states. Alongside the map, we will render a compact node table displaying IDs, parents, discovery/low values, component counts, and sorted critical-item summaries.
 
 ---
 
 ## 2. System Architecture: The "Festival" Mental Model
 
-To understand the codebase, think of our code as a team organizing a festival[cite: 1]:
-*   **`types.ts` (The Rulebook):** This file just defines our vocabulary[cite: 1]. It says, "An Island must have an ID and coordinates," and "A Bridge connects exactly two islands."[cite: 1]. It also lists every possible event our explorer can report, like discovering an island or finding a critical bridge[cite: 1].
-*   **`data.ts` (The Paper Map):** This is our actual festival layout[cite: 1]. It lists our 7 specific islands (like "Food Stalls" and "Main Stage") and the 8 bridges connecting them[cite: 1].
-*   **`graph.ts` (The Safety Inspector):** Before anyone walks the islands, this inspector checks the paper map for mistakes[cite: 1]. It makes sure no bridge connects an island to itself and that no islands share the same name[cite: 1]. Then, it creates a neat, alphabetical list for every island showing exactly which other islands it connects to[cite: 1].
-*   **`tarjan.ts` (The Explorer with a Camera):** This is the heavy algorithm[cite: 1]. Imagine a person walking the bridges with a stopwatch and a camera[cite: 1]. They step on an island and write down the exact time[cite: 1]. If they walk down a path, hit a dead end, and realize they can't circle back to the start, they flag that path as a dangerous bridge[cite: 1]. Every single time they take a step or make a decision, they snap a photo of their notebook[cite: 1]. By the end, they hand us a massive stack of photos detailing the entire journey[cite: 1].
-*   **`useReplay.ts` (The TV Remote):** This file takes that stack of photos from the Explorer and puts them on a screen[cite: 1]. It gives the user the exact controls required: Step (show the next photo), Run to End (fast forward to the final photo), and Reset (rewind to the beginning)[cite: 1].
+To understand the codebase, think of our code as a team organizing a festival:
+*   **`types.ts` (The Rulebook):** This file just defines our vocabulary. It says, "An Island must have an ID and coordinates," and "A Bridge connects exactly two islands.". It also lists every possible event our explorer can report, like discovering an island or finding a critical bridge.
+*   **`data.ts` (The Paper Map):** This is our actual festival layout. It lists our 7 specific islands (like "Food Stalls" and "Main Stage") and the 8 bridges connecting them.
+*   **`graph.ts` (The Safety Inspector):** Before anyone walks the islands, this inspector checks the paper map for mistakes. It makes sure no bridge connects an island to itself and that no islands share the same name. Then, it creates a neat, alphabetical list for every island showing exactly which other islands it connects to.
+*   **`tarjan.ts` (The Explorer with a Camera):** This is the heavy algorithm. Imagine a person walking the bridges with a stopwatch and a camera. They step on an island and write down the exact time. If they walk down a path, hit a dead end, and realize they can't circle back to the start, they flag that path as a dangerous bridge. Every single time they take a step or make a decision, they snap a photo of their notebook. By the end, they hand us a massive stack of photos detailing the entire journey.
+*   **`useReplay.ts` (The TV Remote):** This file takes that stack of photos from the Explorer and puts them on a screen. It gives the user the exact controls required: Step (show the next photo), Run to End (fast forward to the final photo), and Reset (rewind to the beginning).
 
 ---
 
 ## 3. Key Engineering Decisions
 
 ### 1. Snapshot-Based Event Logging for DFS
-*   **Why we chose it:** The contract requires a step-by-step visual replay engine[cite: 1]. Pushing a full clone of the discovery and low-link state to an array at every traversal step turns time-travel into a simple array index (`currentIndex`)[cite: 1].
-*   **Alternative:** Using JavaScript Generator functions (`yield`) to pause execution, or async/await with delays[cite: 1].
-*   **Trade-off:** Snapshotting consumes more memory (storing deep copies of the state for $O(V+E)$ events) compared to a generator[cite: 1]. However, it completely eliminates asynchronous race conditions in React and makes the `Reset` and `Run to End` features instant[cite: 1].
+*   **Why we chose it:** The contract requires a step-by-step visual replay engine. Pushing a full clone of the discovery and low-link state to an array at every traversal step turns time-travel into a simple array index (`currentIndex`).
+*   **Alternative:** Using JavaScript Generator functions (`yield`) to pause execution, or async/await with delays.
+*   **Trade-off:** Snapshotting consumes more memory (storing deep copies of the state for $O(V+E)$ events) compared to a generator. However, it completely eliminates asynchronous race conditions in React and makes the `Reset` and `Run to End` features instant.
 
 ### 2. SVG `viewBox` for Map Rendering
-*   **Why we chose it:** The problem restricts node coordinates to a finite `0` to `100` range[cite: 1]. Setting the SVG `viewBox` to `-10 -10 120 120` automatically scales the map proportionally to any screen size without manual pixel math[cite: 1].
-*   **Alternative:** Using HTML5 Canvas or a heavy graph visualization library like D3.js or Cytoscape[cite: 1].
-*   **Trade-off:** SVG DOM nodes can become a performance bottleneck if rendering thousands of elements[cite: 1]. Since the contract caps the engine at 12 nodes and 20 edges, SVG is vastly superior for its native CSS styling, simple React integration, and zero external dependencies[cite: 1].
+*   **Why we chose it:** The problem restricts node coordinates to a finite `0` to `100` range. Setting the SVG `viewBox` to `-10 -10 120 120` automatically scales the map proportionally to any screen size without manual pixel math.
+*   **Alternative:** Using HTML5 Canvas or a heavy graph visualization library like D3.js or Cytoscape.
+*   **Trade-off:** SVG DOM nodes can become a performance bottleneck if rendering thousands of elements. Since the contract caps the engine at 12 nodes and 20 edges, SVG is vastly superior for its native CSS styling, simple React integration, and zero external dependencies.
 
 ### 3. Strict ASCII Pre-Sorting of Adjacency Lists
-*   **Why we chose it:** The contract explicitly requires that the input array order must not alter the traversal or the result, and neighbors must be inspected in ascending node-ID order[cite: 1].
-*   **Alternative:** Processing the graph exactly as provided in the raw input array[cite: 1].
-*   **Trade-off:** Pre-sorting adds an $O(V \log V + E \log E)$ initialization cost before the $O(V + E)$ DFS begins[cite: 1]. While marginally slower at startup, it guarantees determinism, allowing our reversed-array test cases to pass[cite: 1].
+*   **Why we chose it:** The contract explicitly requires that the input array order must not alter the traversal or the result, and neighbors must be inspected in ascending node-ID order.
+*   **Alternative:** Processing the graph exactly as provided in the raw input array.
+*   **Trade-off:** Pre-sorting adds an $O(V \log V + E \log E)$ initialization cost before the $O(V + E)$ DFS begins. While marginally slower at startup, it guarantees determinism, allowing our reversed-array test cases to pass.
 
 ### 4. Strict Separation of Graph Logic and UI State
-*   **Why we chose it:** To prepare for the 10-minute live modification requirement[cite: 1]. By decoupling the Tarjan algorithm (`tarjan.ts`) from the React playback hook (`useReplay.ts`) and modularizing the visual components (`IslandMap`, `SafetySummary`), modifications are strictly isolated[cite: 1].
-*   **Alternative:** Writing a monolithic `page.tsx` that interleaves graph calculation with React state (`useState` inside the DFS)[cite: 1].
-*   **Trade-off:** Requires more upfront architectural boilerplate and file switching[cite: 1]. The massive benefit is a reduced blast radius; changing how a bridge is highlighted won't accidentally break the DFS clock[cite: 1].
+*   **Why we chose it:** To prepare for the 10-minute live modification requirement. By decoupling the Tarjan algorithm (`tarjan.ts`) from the React playback hook (`useReplay.ts`) and modularizing the visual components (`IslandMap`, `SafetySummary`), modifications are strictly isolated.
+*   **Alternative:** Writing a monolithic `page.tsx` that interleaves graph calculation with React state (`useState` inside the DFS).
+*   **Trade-off:** Requires more upfront architectural boilerplate and file switching. The massive benefit is a reduced blast radius; changing how a bridge is highlighted won't accidentally break the DFS clock.
 
 ### 5. Treating the Root Node as a Special Case for Articulation
-*   **Why we chose it:** A fundamental rule of Tarjan's algorithm is that the DFS root is an articulation point if and only if it has at least two independent DFS-tree children[cite: 1]. We tracked `childrenCount` specifically for the root, bypassing the standard `low[v] >= discovery[u]` check used for non-root nodes[cite: 1].
-*   **Alternative:** Attempting to force the root node to evaluate using the standard low-link inequality logic[cite: 1].
-*   **Trade-off:** Adding an explicit `if (u === rootId)` branch slightly increases code complexity[cite: 1]. However, it perfectly aligns with the mathematical definition of DFS articulation points and satisfies the contract's strict rule for root child-counts[cite: 1].
+*   **Why we chose it:** A fundamental rule of Tarjan's algorithm is that the DFS root is an articulation point if and only if it has at least two independent DFS-tree children. We tracked `childrenCount` specifically for the root, bypassing the standard `low[v] >= discovery[u]` check used for non-root nodes.
+*   **Alternative:** Attempting to force the root node to evaluate using the standard low-link inequality logic.
+*   **Trade-off:** Adding an explicit `if (u === rootId)` branch slightly increases code complexity. However, it perfectly aligns with the mathematical definition of DFS articulation points and satisfies the contract's strict rule for root child-counts.
 
 ---
 
